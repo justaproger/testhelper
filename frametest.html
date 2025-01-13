@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Answer from File</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .button-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <iframe
+    src="https://student.tdau.uz/dashboard/login"
+    sandbox="allow-same-origin allow-scripts allow-forms">
+    </iframe>
+
+
+    <div class="button-container">
+        <button id="searchAnswerButton">Найти правильный ответ</button>
+    </div>
+
+    <script>
+        let questionsData = '';
+
+        async function loadQuestionsFile() {
+            try {
+                console.log('Попытка загрузить файл с вопросами...');
+                const response = await fetch('questions.txt'); // Укажите путь к файлу
+                if (!response.ok) {
+                    console.error('Ошибка загрузки файла:', response.status, response.statusText);
+                    alert('Не удалось загрузить файл с вопросами.');
+                    return;
+                }
+                questionsData = await response.text();
+                console.log('Файл с вопросами успешно загружен.');
+            } catch (error) {
+                console.error('Ошибка загрузки файла с вопросами:', error);
+                alert('Ошибка загрузки файла с вопросами.');
+            }
+        }
+
+        function sanitizeQuestion(input) {
+            console.log('Исходный текст вопроса:', input);
+            // Удаляем название страницы и лишние пробелы
+            const sanitized = input.replace(/(Untitled.*$|.*?\n)/i, '').trim();
+            console.log('Очищенный текст вопроса:', sanitized);
+            return sanitized;
+        }
+
+        function findAnswer(questionText) {
+            console.log('Начат поиск ответа для вопроса:', questionText);
+            const questions = questionsData.split('++++');
+            for (const questionBlock of questions) {
+                const [question, ...answers] = questionBlock.trim().split('====');
+                if (question && questionText.trim() === question.trim()) {
+                    console.log('Найден вопрос:', question);
+                    const correctAnswer = answers.find(answer => answer.startsWith('#'));
+                    if (correctAnswer) {
+                        console.log('Найден правильный ответ:', correctAnswer.slice(1).trim());
+                        return correctAnswer.slice(1).trim();
+                    } else {
+                        console.log('Правильный ответ не найден.');
+                        return 'Ответ не найден';
+                    }
+                }
+            }
+            console.log('Вопрос не найден в файле.');
+            return 'Вопрос не найден';
+        }
+
+        document.getElementById('searchAnswerButton').addEventListener('click', async () => {
+            try {
+                const clipboardText = await navigator.clipboard.readText();
+                const sanitizedQuestion = sanitizeQuestion(clipboardText);
+                if (!questionsData) {
+                    alert('Файл с вопросами не загружен. Попробуйте еще раз.');
+                    return;
+                }
+                const answer = findAnswer(sanitizedQuestion);
+                await navigator.clipboard.writeText(answer);
+                console.log('Правильный ответ записан в буфер обмена:', answer);
+                alert(`Правильный ответ записан в буфер обмена:\n${answer}`);
+            } catch (error) {
+                console.error('Ошибка обработки буфера обмена:', error);
+                alert('Ошибка обработки буфера обмена.');
+            }
+        });
+
+        loadQuestionsFile();
+    </script>
+</body>
+</html>
